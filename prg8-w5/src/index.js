@@ -1,14 +1,25 @@
+import kNear from "./knear/main.js";
+
 let model
 let videoWidth, videoHeight
 let ctx, canvas
+
 let pose = []
 let prediction = []
+let label = document.querySelector('#label')
+
 const log = document.querySelector('#array')
 const train = document.querySelector('#train')
+const classify = document.querySelector('#classify')
+
 const VIDEO_WIDTH = 720
 const VIDEO_HEIGHT = 405
 
+const k = 10
+const machine = new kNear(k)
+
 train.addEventListener('click', trainModel)
+classify.addEventListener('click', classifyView)
 
 // start de applicatie
 async function main(){
@@ -75,25 +86,47 @@ async function startLandmarkDetection(video){
 async function predictLandmarks(){
     ctx.drawImage(video, 0, 0, videoWidth, videoHeight, 0, 0, canvas.width, canvas.height)
     // prediction!
-    predictions = await model.estimateHands(video) // ,true voor flip
+    let predictions = await model.estimateHands(video) // ,true voor flip
     if(predictions.length > 0){
         drawHand(ctx, predictions[0].landmarks, predictions[0].annotations)
-        prediction = predictions[0]
         console.log(predictions[0])
-        console.log(prediction)
+        prediction = predictions[0].landmarks
     }
     // 60 keer per seconde is veel, gebruik setTimeout om minder vaak te predicten
-    // requestAnimationFrame(predictLandmarks)
-    setTimeout(() => predictLandmarks(), 1000)
+    requestAnimationFrame(predictLandmarks)
+    // setTimeout(() => predictLandmarks(), 500)
 }
 
 function trainModel(){
     console.log('training')
+    console.log("PREDICTION", prediction)
     if(prediction){
-        console.log('TRAINED', prediction, typeof prediction)
-    }
-    else {
+        for (let item of prediction) {
+            // console.log('TRAINED', item[0], item[1])
+
+            pose.push(item[0], item[1])
+
+        }
+        console.log(label.value, pose)
+    } else {
         console.log('no prediction')
+    }
+    // TODO: Fix learn issue so it doesnt always say paper on classify
+    machine.learn(pose, label.value)
+}
+
+function classifyView(){
+    let predictedPose = machine.classify(pose)
+    console.log(predictedPose)
+
+    switch (predictedPose){
+        case ("paper") : console.log("I chose scissors, you lose!")
+            break;
+        case ("rock") : console.log("I chose paper, you lose!")
+            break;
+        case ("scissors") : console.log("I chose rock, you lose!")
+            break;
+
     }
 }
 
