@@ -1,14 +1,27 @@
+import kNear from "./knear/main.js";
+
 let model
 let videoWidth, videoHeight
 let ctx, canvas
+
 let pose = []
 let prediction = []
+let label = document.querySelector('#label')
+
 const log = document.querySelector('#array')
 const train = document.querySelector('#train')
+const classify = document.querySelector('#classify')
+const setText = document.querySelector('#prediction')
+const res = document.querySelector('#computer')
+
 const VIDEO_WIDTH = 720
 const VIDEO_HEIGHT = 405
 
+const k = 3
+const machine = new kNear(k)
+
 train.addEventListener('click', trainModel)
+classify.addEventListener('click', classifyView)
 
 // start de applicatie
 async function main(){
@@ -75,25 +88,63 @@ async function startLandmarkDetection(video){
 async function predictLandmarks(){
     ctx.drawImage(video, 0, 0, videoWidth, videoHeight, 0, 0, canvas.width, canvas.height)
     // prediction!
-    predictions = await model.estimateHands(video) // ,true voor flip
+    let predictions = await model.estimateHands(video) // ,true voor flip
     if(predictions.length > 0){
         drawHand(ctx, predictions[0].landmarks, predictions[0].annotations)
-        prediction = predictions[0]
-        console.log(predictions[0])
-        console.log(prediction)
+        // console.log(predictions[0])
+        prediction = predictions[0].landmarks
     }
     // 60 keer per seconde is veel, gebruik setTimeout om minder vaak te predicten
-    // requestAnimationFrame(predictLandmarks)
-    setTimeout(() => predictLandmarks(), 1000)
+    requestAnimationFrame(predictLandmarks)
+    // setTimeout(() => predictLandmarks(), 500)
 }
 
 function trainModel(){
-    console.log('training')
+    // console.log('training')
+    // console.log("PREDICTION", prediction)
     if(prediction){
-        console.log('TRAINED', prediction, typeof prediction)
-    }
-    else {
+        for (let item of prediction) {
+            // console.log('TRAINED', item[0], item[1])
+
+            pose.push(item[0], item[1])
+        }
+        // console.log("PUSHED", label.value, pose)
+    } else {
         console.log('no prediction')
+    }
+
+    machine.learn(pose, label.value)
+    pose = []
+}
+
+function classifyView(){
+    if(prediction){
+        for (let item of prediction) {
+
+            pose.push(item[0], item[1])
+        }
+    } else {
+        console.log('no prediction')
+    }
+
+    let predictedPose = machine.classify(pose)
+    console.log(predictedPose)
+    setText.innerHTML = predictedPose
+
+    switch (predictedPose){
+        case ("paper") :
+            console.log("I chose scissors, you lose!")
+            res.innerHTML = "I chose scissors, you lose!"
+            break;
+        case ("rock") :
+            console.log("I chose paper, you lose!")
+            res.innerHTML = "I chose paper, you lose!"
+            break;
+        case ("scissors") :
+            console.log("I chose rock, you lose!")
+            res.innerHTML = "I chose rock, you lose!"
+            break;
+
     }
 }
 
